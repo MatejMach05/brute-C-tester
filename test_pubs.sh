@@ -116,7 +116,7 @@ while getopts "xrvcsdiR:f:" flag; do
             random_mode=1 ;;
         s) side_by_side="" ;;
         f) PROGRAM_REF="${PROGRAM_REF} ${OPTARG}" #aditional flag will be passed to both programs
-            PROGRAM_MY="${PROGRAM_MY} ${OPTARG}"
+            PROGRAM_MY="${PROGRAM_MY} ${OPTARG}";;
     esac
 done
 
@@ -169,7 +169,10 @@ if [ $random_mode -eq 1 ] || [ $input -eq 1 ]; then
         PROBLEM=my_random_data/hw$HW # custom naming
         MY_SOLUTION=my_random_data/my_hw$HW # custom naming
         # generate random input
-        $PROGRAM_REF -generate > $PROBLEM.in 2>/dev/null
+        $PROGRAM_REF -generate $GEN_ARGS "$PROBLEM.in" > $PROBLEM.in 2> $PROBLEM.in.pat
+
+        # Load the generated pattern and filename from the .pat file
+        PATTERN_ARGS=$(cat $PROBLEM.in.pat)
 
         # manual input, prompt for it
         if [ $input -eq 1 ]; then
@@ -179,11 +182,11 @@ if [ $random_mode -eq 1 ] || [ $input -eq 1 ]; then
         fi
         
         # get their solution to the problem
-        $PROGRAM_REF < $PROBLEM.in > $PROBLEM.out 2>$PROBLEM.err
+        eval "$PROGRAM_REF $PATTERN_ARGS < $PROBLEM.in > $PROBLEM.out 2>$PROBLEM.err"
 
         start_time=$(date +%s%3N) #start timer
         # get my solution to the problem
-        $valgrind $PROGRAM_MY < $PROBLEM.in > $MY_SOLUTION.out 2>$MY_SOLUTION.err
+        eval "$valgrind $PROGRAM_MY $PATTERN_ARGS < $PROBLEM.in > $MY_SOLUTION.out 2>$MY_SOLUTION.err"
         
         valgrind_status=$? # catch last return value in this case from valgrind            
         end_time=$(date +%s%3N) # end timer
@@ -300,11 +303,13 @@ else
         
         # 4. Strip the .in to keep the full relative path (e.g., "data/man/pub01")
         PROBLEM="${FILE%.in}" 
+
+        PATTERN_ARGS=$(cat $PROBLEM.in.pat)
                 
         start_time=$(date +%s%3N) #start timer
         
         # run my program
-        $valgrind $PROGRAM_MY < $PROBLEM.in > $MY_SOLUTION.out 2> $MY_SOLUTION.err
+        eval "$valgrind $PROGRAM_MY $PATTERN_ARGS < $PROBLEM.in > $MY_SOLUTION.out 2>$MY_SOLUTION.err"
         valgrind_status=$? # catch valgrind return message
         end_time=$(date +%s%3N) # end timer
         run_time=$(($end_time - $start_time)) # final time
